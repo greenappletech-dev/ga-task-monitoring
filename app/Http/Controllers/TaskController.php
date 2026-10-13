@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Task;
 use App\Models\TaskComment;
+use App\Models\TaskHistory;
+use App\Models\TaskAttachment;
 use App\Models\SiteProject;
 use App\Models\Site;
 use App\Models\User;
 use App\Models\SlaRule;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class TaskController extends Controller
 {
@@ -163,6 +166,8 @@ class TaskController extends Controller
             'assigned_to' => 'nullable|exists:users,id',
             'qa_assigned_to' => 'nullable|exists:users,id',
             'target_date' => 'nullable|date|after_or_equal:today',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|max:10240', // 10MB max per file
         ]);
 
         // Generate task number
@@ -222,6 +227,9 @@ class TaskController extends Controller
 
         $task = Task::create($taskData);
 
+        // Handle file uploads
+        $this->handleFileUploads($request, $task);
+
         $message = "Task {$taskNo} created successfully.";
         if ($status === 'Assigned') {
             $message .= " Task has been assigned to developer and QA.";
@@ -239,8 +247,19 @@ class TaskController extends Controller
      */
     public function show($id)
     {
-        $task = Task::with(['siteProject.site', 'siteProject.project', 'requester', 'developer', 'qa', 'comments.user'])
-            ->findOrFail($id);
+        $task = Task::with([
+            'siteProject.site',
+            'siteProject.project',
+            'requester',
+            'developer',
+            'qa',
+            'comments.user',
+            'history.user',
+            'attachments.uploader',
+            'parentTask',
+            'childTasks',
+            'rejectedBy'
+        ])->findOrFail($id);
 
         return view('tasks.show', compact('task'));
     }
@@ -321,6 +340,9 @@ class TaskController extends Controller
             'rejection_reason' => 'required|string|max:1000',
         ]);
 
+        // Log status change
+        $this->logTaskHistory($task, 'status', $task->status, 'Blocked', 'QA Testing Failed: ' . $validated['rejection_reason']);
+
         // Update original task
         $task->update([
             'status' => 'Blocked',
@@ -375,6 +397,9 @@ class TaskController extends Controller
         $validated = $request->validate([
             'rejection_reason' => 'required|string|max:1000',
         ]);
+
+        // Log status change
+        $this->logTaskHistory($task, 'status', $task->status, 'Blocked', 'Implementation Testing Failed: ' . $validated['rejection_reason']);
 
         // Update original task
         $task->update([
@@ -635,6 +660,9 @@ class TaskController extends Controller
             }
         }
 
+        // Log status change to history
+        $this->logTaskHistory($task, 'status', $oldStatus, $newStatus);
+
         $task->update(['status' => $newStatus]);
 
         return response()->json([
@@ -732,6 +760,8 @@ class TaskController extends Controller
             'assigned_to' => 'nullable|exists:users,id',
             'qa_assigned_to' => 'nullable|exists:users,id',
             'target_date' => 'nullable|date',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|max:10240', // 10MB max per file
         ]);
 
         $updateData = [
@@ -768,6 +798,9 @@ class TaskController extends Controller
 
         $task->update($updateData);
 
+        // Handle file uploads
+        $this->handleFileUploads($request, $task);
+
         return redirect()->route('tasks.show', $task)
             ->with('success', 'Task updated successfully.');
     }
@@ -800,5 +833,102 @@ class TaskController extends Controller
         }
 
         return $currentDate;
+    }
+
+    /**
+     * Log task field changes to history
+     */
+    private function logTaskHistory(Task $task, $field, $oldValue, $newValue, $reason = null)
+    {
+        // Skip if values are the same
+        if ($oldValue == $newValue) {
+            return;
+        }
+
+        // Convert objects/dates to strings for storage
+        if ($oldValue instanceof \DateTime || $oldValue instanceof Carbon) {
+            $oldValue = $oldValue->format('Y-m-d H:i:s');
+        }
+        if ($newValue instanceof \DateTime || $newValue instanceof Carbon) {
+            $newValue = $newValue->format('Y-m-d H:i:s');
+        }
+
+        // Get user names for assignment fields
+        if (in_array($field, ['assigned_to', 'qa_assigned_to', 'requested_by', 'rejected_by'])) {
+            if ($oldValue) {
+                $oldUser = User::find($oldValue);
+                $oldValue = $oldUser ? $oldUser->name : 'User #' . $oldValue;
+            }
+            if ($newValue) {
+                $newUser = User::find($newValue);
+                $newValue = $newUser ? $newUser->name : 'User #' . $newValue;
+            }
+        }
+
+        TaskHistory::create([
+            'task_id' => $task->id,
+            'field' => $field,
+            'old_value' => $oldValue,
+            'new_value' => $newValue,
+            'reason' => $reason,
+            'changed_by' => auth()->id(),
+            'changed_at' => now(),
+        ]);
+    }
+
+    /**
+     * Handle file uploads for a task
+     */
+    private function handleFileUploads(Request $request, Task $task)
+    {
+        if (!$request->hasFile('attachments')) {
+            return;
+        }
+
+        foreach ($request->file('attachments') as $file) {
+            // Validate file size (10MB max)
+            if ($file->getSize() > 10 * 1024 * 1024) {
+                continue; // Skip files larger than 10MB
+            }
+
+            // Generate unique filename
+            $originalName = $file->getClientOriginalName();
+            $extension = $file->getClientOriginalExtension();
+            $fileName = pathinfo($originalName, PATHINFO_FILENAME);
+            $uniqueFileName = $fileName . '_' . time() . '_' . uniqid() . '.' . $extension;
+
+            // Store file in storage/app/task_attachments
+            $path = $file->storeAs('task_attachments', $uniqueFileName);
+
+            // Create attachment record
+            TaskAttachment::create([
+                'task_id' => $task->id,
+                'file_name' => $originalName,
+                'file_type' => $file->getClientMimeType(),
+                'file_size' => $file->getSize(),
+                'storage_path' => $path,
+                'uploaded_by' => auth()->id(),
+                'uploaded_at' => now(),
+            ]);
+        }
+    }
+
+    /**
+     * Download a task attachment
+     */
+    public function downloadAttachment(TaskAttachment $attachment)
+    {
+        // Check if attachment exists and is not deleted
+        if ($attachment->is_deleted) {
+            abort(404, 'Attachment not found');
+        }
+
+        // Check if file exists in storage
+        if (!Storage::exists($attachment->storage_path)) {
+            abort(404, 'File not found');
+        }
+
+        // Download the file
+        return Storage::download($attachment->storage_path, $attachment->file_name);
     }
 }

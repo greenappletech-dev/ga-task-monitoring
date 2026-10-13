@@ -71,15 +71,15 @@ class Task extends Model
         return $this->hasMany(TaskComment::class)->orderBy('created_at', 'desc');
     }
 
-    // public function attachments()
-    // {
-    //     return $this->hasMany(TaskAttachment::class)->where('is_deleted', false);
-    // }
+    public function attachments()
+    {
+        return $this->hasMany(TaskAttachment::class)->where('is_deleted', false);
+    }
 
-    // public function history()
-    // {
-    //     return $this->hasMany(TaskHistory::class)->orderBy('changed_at', 'desc');
-    // }
+    public function history()
+    {
+        return $this->hasMany(TaskHistory::class)->orderBy('changed_at', 'desc');
+    }
 
     // public function uatResults()
     // {

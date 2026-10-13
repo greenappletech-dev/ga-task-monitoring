@@ -62,7 +62,7 @@
     <div class="col-md-8">
         <div class="card">
             <div class="card-body">
-                <form action="{{ route('tasks.update', $task) }}" method="POST">
+                <form action="{{ route('tasks.update', $task) }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
 
@@ -217,6 +217,22 @@
                     </div>
 
                     <hr class="my-4">
+
+                    <!-- File Attachments -->
+                    <div class="mb-4">
+                        <label class="form-label">
+                            <i class="bi bi-paperclip"></i> Add New Attachments
+                        </label>
+                        <input type="file" class="form-control @error('attachments.*') is-invalid @enderror"
+                               id="attachments" name="attachments[]" multiple
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.txt,.zip">
+                        @error('attachments.*')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <small class="text-muted">
+                            You can upload multiple files. Supported: PDF, Word, Excel, Images, Text, ZIP (Max 10MB each)
+                        </small>
+                    </div>
 
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">

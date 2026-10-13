@@ -51,6 +51,9 @@ Route::middleware(['auth'])->group(function () {
     // Task comments
     Route::post('/tasks/{task}/comments', [TaskController::class, 'storeComment'])->name('tasks.comments.store');
 
+    // Task attachments download
+    Route::get('/attachments/{attachment}/download', [TaskController::class, 'downloadAttachment'])->name('attachments.download');
+
     // Update task status (for Kanban drag-and-drop)
     Route::post('/tasks/{task}/update-status', [TaskController::class, 'updateStatus'])->name('tasks.updateStatus');
 

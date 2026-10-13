@@ -451,12 +451,21 @@ class TaskController extends Controller
      */
     public function assignForm(Task $task)
     {
+        // Eager load relationships to prevent errors
+        $task->load('siteProject.site', 'siteProject.project');
+
         if (!in_array($task->status, ['Approved', 'For Clarification', 'Assigned'])) {
             return redirect()->route('tasks.show', $task)
                 ->with('error', 'This task cannot be assigned in its current status.');
         }
 
         $user = auth()->user();
+
+        // Check if siteProject relationship exists
+        if (!$task->siteProject) {
+            return redirect()->route('tasks.show', $task)
+                ->with('error', 'This task has invalid site/project assignment. Please contact an administrator.');
+        }
 
         // Get developers and QA from the same site as the task
         $siteId = $task->siteProject->site_id;

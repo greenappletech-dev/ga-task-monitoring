@@ -76,11 +76,14 @@ class UserController extends Controller
         // Send welcome email with password
         try {
             Mail::to($user->email)->send(new WelcomeUserMail($user, $password));
+            \Log::info("Welcome email sent successfully to {$user->email}");
             return redirect()->route('admin.users.index')
-                ->with('success', "User created successfully. Welcome email sent to {$user->email}");
+                ->with('success', "✅ User created successfully! Welcome email with login credentials has been sent to {$user->email}");
         } catch (\Exception $e) {
+            \Log::error("Failed to send welcome email to {$user->email}: " . $e->getMessage());
             return redirect()->route('admin.users.index')
-                ->with('warning', "User created successfully, but email could not be sent. Temporary password: {$password} (Please configure email settings or manually send this to the user)");
+                ->with('warning', "⚠️ User created successfully, but email could not be sent. Temporary password: <strong>{$password}</strong><br>Please manually send this password to the user or check your email configuration.")
+                ->with('temp_password', $password);
         }
     }
 
@@ -174,11 +177,14 @@ class UserController extends Controller
         // Send password reset email
         try {
             Mail::to($user->email)->send(new PasswordResetMail($user, $password));
+            \Log::info("Password reset email sent successfully to {$user->email}");
             return redirect()->back()
-                ->with('success', "Password reset successfully. Email sent to {$user->email}");
+                ->with('success', "✅ Password reset successfully! Email with new login credentials has been sent to {$user->email}");
         } catch (\Exception $e) {
+            \Log::error("Failed to send password reset email to {$user->email}: " . $e->getMessage());
             return redirect()->back()
-                ->with('warning', "Password reset successfully, but email could not be sent. New password: {$password} (Please configure email settings or manually send this to the user)");
+                ->with('warning', "⚠️ Password reset successfully, but email could not be sent. New password: <strong>{$password}</strong><br>Please manually send this password to the user or check your email configuration.")
+                ->with('temp_password', $password);
         }
     }
 }

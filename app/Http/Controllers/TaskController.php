@@ -336,6 +336,12 @@ class TaskController extends Controller
                 ->with('error', 'Only tasks in QA Testing can be failed.');
         }
 
+        // Check if task has developer assigned
+        if (!$task->assigned_to) {
+            return redirect()->route('tasks.show', $task)
+                ->with('error', 'Cannot fail QA testing: Task has no developer assigned. Please assign a developer first.');
+        }
+
         $validated = $request->validate([
             'rejection_reason' => 'required|string|max:1000',
         ]);
@@ -392,6 +398,12 @@ class TaskController extends Controller
         if ($task->status !== 'For Implementation UAT') {
             return redirect()->route('tasks.show', $task)
                 ->with('error', 'Only tasks in Implementation Testing can be failed.');
+        }
+
+        // Check if task has developer assigned
+        if (!$task->assigned_to) {
+            return redirect()->route('tasks.show', $task)
+                ->with('error', 'Cannot fail Implementation testing: Task has no developer assigned. Please assign a developer first.');
         }
 
         $validated = $request->validate([

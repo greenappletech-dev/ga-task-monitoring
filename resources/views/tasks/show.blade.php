@@ -276,9 +276,115 @@
         </div>
         @endif
 
+        {{-- Attachments Card --}}
+        <div class="card mb-3">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-paperclip"></i> Attachments ({{ $task->attachments->count() }})</h6>
+            </div>
+            <div class="card-body">
+                @if($task->attachments->count() > 0)
+                    <div class="list-group list-group-flush">
+                        @foreach($task->attachments as $attachment)
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <div class="d-flex align-items-center flex-grow-1">
+                                <i class="bi bi-file-earmark-{{
+                                    str_contains($attachment->file_type, 'pdf') ? 'pdf' :
+                                    (str_contains($attachment->file_type, 'word') || str_contains($attachment->file_type, 'document') ? 'word' :
+                                    (str_contains($attachment->file_type, 'excel') || str_contains($attachment->file_type, 'spreadsheet') ? 'excel' :
+                                    (str_contains($attachment->file_type, 'image') ? 'image' :
+                                    (str_contains($attachment->file_type, 'zip') || str_contains($attachment->file_type, 'compressed') ? 'zip' : 'text'))))
+                                }} fs-3 me-3 text-primary"></i>
+                                <div class="flex-grow-1">
+                                    <p class="mb-0"><strong>{{ $attachment->file_name }}</strong></p>
+                                    <small class="text-muted">
+                                        {{ number_format($attachment->file_size / 1024, 2) }} KB •
+                                        Uploaded by {{ $attachment->uploader->name }} •
+                                        {{ $attachment->uploaded_at->diffForHumans() }}
+                                    </small>
+                                </div>
+                            </div>
+                            <a href="{{ route('attachments.download', $attachment) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-download"></i> Download
+                            </a>
+                        </div>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="text-muted text-center mb-0 py-3">
+                        <i class="bi bi-inbox" style="font-size: 2rem;"></i><br>
+                        No attachments yet
+                    </p>
+                @endif
+            </div>
+        </div>
+
+        {{-- Movement History Card --}}
+        @if($task->history->count() > 0)
+        <div class="card mb-3">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-clock-history"></i> Task Movement History</h6>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    @php
+                        $previousDate = null;
+                    @endphp
+                    @foreach($task->history as $index => $historyItem)
+                        @php
+                            $timeDiff = null;
+                            if ($index < $task->history->count() - 1) {
+                                $nextItem = $task->history[$index + 1];
+                                $timeDiff = $historyItem->changed_at->diffForHumans($nextItem->changed_at, true);
+                            }
+                        @endphp
+                        <div class="timeline-item mb-3">
+                            <div class="d-flex">
+                                <div class="timeline-marker me-3">
+                                    <div class="bg-primary rounded-circle" style="width: 12px; height: 12px; margin-top: 6px;"></div>
+                                    @if(!$loop->last)
+                                    <div class="bg-secondary" style="width: 2px; height: 100%; margin-left: 5px; margin-top: 4px;"></div>
+                                    @endif
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <div>
+                                            <strong class="text-capitalize">{{ str_replace('_', ' ', $historyItem->field) }}</strong>
+                                            <span class="text-muted">changed</span>
+                                        </div>
+                                        <small class="text-muted">{{ $historyItem->changed_at->format('M d, Y h:i A') }}</small>
+                                    </div>
+                                    <div class="mb-1">
+                                        @if($historyItem->old_value)
+                                        <span class="badge bg-light text-dark border">{{ $historyItem->old_value }}</span>
+                                        <i class="bi bi-arrow-right mx-1"></i>
+                                        @endif
+                                        <span class="badge bg-primary">{{ $historyItem->new_value }}</span>
+                                    </div>
+                                    <small class="text-muted">
+                                        <i class="bi bi-person"></i> {{ $historyItem->user->name }}
+                                        @if($timeDiff)
+                                        <span class="ms-2"><i class="bi bi-hourglass-split"></i> Stayed for {{ $timeDiff }}</span>
+                                        @endif
+                                    </small>
+                                    @if($historyItem->reason)
+                                    <div class="mt-2">
+                                        <small class="text-danger">
+                                            <i class="bi bi-info-circle"></i> <strong>Reason:</strong> {{ $historyItem->reason }}
+                                        </small>
+                                    </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+        @endif
+
         {{-- Related Tasks Card --}}
         @if($task->parentTask || $task->childTasks->count() > 0)
-        <div class="card">
+        <div class="card mb-3">
             <div class="card-header bg-light">
                 <h6 class="mb-0"><i class="bi bi-link-45deg"></i> Related Tasks</h6>
             </div>

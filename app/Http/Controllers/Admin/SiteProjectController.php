@@ -16,7 +16,7 @@ class SiteProjectController extends Controller
      */
     public function index()
     {
-        $siteProjects = SiteProject::with(['site', 'project', 'lead'])
+        $siteProjects = SiteProject::with(['site', 'project', 'lead', 'leads'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
@@ -47,12 +47,19 @@ class SiteProjectController extends Controller
             'site_id' => 'required|exists:sites,id',
             'project_id' => 'required|exists:projects,id|unique:site_projects,project_id,NULL,id,site_id,' . $request->site_id,
             'lead_user_id' => 'nullable|exists:users,id',
+            'lead_ids' => 'nullable|array',
+            'lead_ids.*' => 'exists:users,id',
             'version' => 'nullable|string|max:255',
             'go_live_date' => 'nullable|date',
             'status' => 'required|in:Development,Live,Maintenance',
         ]);
 
-        SiteProject::create($validated);
+        $siteProject = SiteProject::create($validated);
+
+        // Sync multiple leads if provided
+        if ($request->has('lead_ids') && is_array($request->lead_ids)) {
+            $siteProject->leads()->sync($request->lead_ids);
+        }
 
         return redirect()->route('admin.site-projects.index')
             ->with('success', 'Site project created successfully.');
@@ -63,7 +70,7 @@ class SiteProjectController extends Controller
      */
     public function show(SiteProject $siteProject)
     {
-        $siteProject->load(['site', 'project', 'lead', 'tasks']);
+        $siteProject->load(['site', 'project', 'lead', 'leads', 'tasks']);
         return view('admin.site-projects.show', compact('siteProject'));
     }
 
@@ -91,12 +98,19 @@ class SiteProjectController extends Controller
             'site_id' => 'required|exists:sites,id',
             'project_id' => 'required|exists:projects,id|unique:site_projects,project_id,' . $siteProject->id . ',id,site_id,' . $request->site_id,
             'lead_user_id' => 'nullable|exists:users,id',
+            'lead_ids' => 'nullable|array',
+            'lead_ids.*' => 'exists:users,id',
             'version' => 'nullable|string|max:255',
             'go_live_date' => 'nullable|date',
             'status' => 'required|in:Development,Live,Maintenance',
         ]);
 
         $siteProject->update($validated);
+
+        // Sync multiple leads if provided
+        if ($request->has('lead_ids')) {
+            $siteProject->leads()->sync($request->lead_ids ?? []);
+        }
 
         return redirect()->route('admin.site-projects.index')
             ->with('success', 'Site project updated successfully.');

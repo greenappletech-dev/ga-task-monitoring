@@ -207,6 +207,7 @@
         display: flex;
         flex-direction: column;
         max-height: calc(100vh - 250px);
+        position: relative;
     }
 
     .kanban-column-header {
@@ -305,6 +306,30 @@
         border-left-color: #0dcaf0;
     }
 
+    /* Role-based column restrictions */
+    .kanban-column.column-disabled {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    .kanban-column.column-disabled .kanban-column-header {
+        background: linear-gradient(135deg, rgba(220, 53, 69, 0.08) 0%, rgba(220, 53, 69, 0.08) 100%);
+        border-bottom: 2px solid #dc3545;
+    }
+
+    .kanban-column.column-disabled .kanban-column-header h6 {
+        color: #dc3545;
+    }
+
+    .kanban-column.column-disabled::after {
+        content: '🔒';
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 1.5rem;
+        opacity: 0.5;
+    }
+
     /* Mobile Responsive */
     @media (max-width: 768px) {
         .kanban-board {
@@ -365,18 +390,89 @@
     // CSRF token for AJAX requests
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
+    // User roles from server
+    const userRoles = @json(auth()->user()->roles ?? []);
+    const isAdmin = userRoles.includes('Admin');
+    const isLead = userRoles.includes('Lead');
+    const isDeveloper = userRoles.includes('Developer');
+    const isQA = userRoles.includes('QA');
+    const isImplementation = userRoles.includes('Implementation');
+
+    // Column definitions for role-based restrictions
+    const columnPermissions = {
+        'backlog': {
+            statuses: ['New', 'For Clarification', 'Approved'],
+            allowedRoles: ['Admin', 'Lead', 'Developer']
+        },
+        'in_progress': {
+            statuses: ['Assigned', 'In Progress', 'Blocked'],
+            allowedRoles: ['Admin', 'Lead', 'Developer']
+        },
+        'qa_testing': {
+            statuses: ['For QA UAT'],
+            allowedRoles: ['Admin', 'Lead', 'Developer', 'QA']
+        },
+        'implementation_testing': {
+            statuses: ['For Implementation UAT'],
+            allowedRoles: ['Admin', 'Lead', 'QA', 'Implementation']
+        },
+        'done': {
+            statuses: ['Done'],
+            allowedRoles: ['Admin', 'Lead', 'Implementation']
+        }
+    };
+
+    // Check if user can move to a specific column
+    function canMoveToColumn(columnKey) {
+        if (isAdmin || isLead) return true; // Admin and Lead can move anywhere
+
+        const column = columnPermissions[columnKey];
+        if (!column) return false;
+
+        return column.allowedRoles.some(role => userRoles.includes(role));
+    }
+
     // Initialize Sortable on each column
     document.querySelectorAll('.kanban-column-body').forEach(column => {
+        const columnKey = column.dataset.column;
+
         new Sortable(column, {
             group: 'kanban',
             animation: 150,
             ghostClass: 'sortable-ghost',
             dragClass: 'sortable-drag',
+
+            // Validate move before allowing drop
+            onMove: function(evt) {
+                const toColumnKey = evt.to.dataset.column;
+
+                // Check if user has permission to drop in this column
+                if (!canMoveToColumn(toColumnKey)) {
+                    // Show visual feedback that drop is not allowed
+                    evt.dragged.style.opacity = '0.3';
+                    return false; // Prevent the move
+                }
+
+                return true; // Allow the move
+            },
+
             onEnd: function(evt) {
                 const taskCard = evt.item;
                 const taskId = taskCard.dataset.taskId;
+                const oldColumn = evt.from;
                 const newColumn = evt.to;
+                const oldColumnKey = oldColumn.dataset.column;
+                const newColumnKey = newColumn.dataset.column;
                 const newStatuses = JSON.parse(newColumn.dataset.statuses);
+
+                // Reset opacity
+                taskCard.style.opacity = '1';
+
+                // If moved to same column, just update counts
+                if (oldColumnKey === newColumnKey) {
+                    updateColumnCounts();
+                    return;
+                }
 
                 // Determine the new status (use first status of the column)
                 const newStatus = newStatuses[0];
@@ -408,20 +504,40 @@
                         // Update column counts
                         updateColumnCounts();
                     } else {
-                        showNotification('Failed to update task status', 'error');
+                        showNotification(data.message || 'Failed to update task status', 'error');
                         // Revert the move
-                        evt.from.insertBefore(taskCard, evt.from.children[evt.oldIndex]);
+                        oldColumn.insertBefore(taskCard, oldColumn.children[evt.oldIndex]);
+                        updateColumnCounts();
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     showNotification('An error occurred while updating the task', 'error');
                     // Revert the move
-                    evt.from.insertBefore(taskCard, evt.from.children[evt.oldIndex]);
+                    oldColumn.insertBefore(taskCard, oldColumn.children[evt.oldIndex]);
+                    updateColumnCounts();
                 });
             }
         });
     });
+
+    // Mark columns as disabled based on user role
+    function markDisabledColumns() {
+        if (isAdmin || isLead) return; // Admin and Lead can access all columns
+
+        document.querySelectorAll('.kanban-column').forEach(column => {
+            const columnBody = column.querySelector('.kanban-column-body');
+            const columnKey = columnBody.dataset.column;
+
+            if (!canMoveToColumn(columnKey)) {
+                column.classList.add('column-disabled');
+                column.title = 'You do not have permission to move tasks to this column';
+            }
+        });
+    }
+
+    // Call on page load
+    markDisabledColumns();
 
     // Update column counts
     function updateColumnCounts() {

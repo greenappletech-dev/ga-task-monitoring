@@ -112,15 +112,21 @@
                     </div>
                 </div>
 
-                @if($siteProject->lead)
+                @if($siteProject->leads->count() > 0)
                 <hr>
                 <div class="mb-0">
-                    <p class="small text-muted mb-1">Project Lead</p>
-                    <p class="mb-0">
-                        <i class="bi bi-person-badge"></i> {{ $siteProject->lead->name }}
-                        <br>
-                        <small class="text-muted">{{ $siteProject->lead->email }}</small>
-                    </p>
+                    <p class="small text-muted mb-1">Project Leads</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach($siteProject->leads as $lead)
+                        <div class="border rounded p-2" style="flex: 1 1 45%;">
+                            <p class="mb-0">
+                                <i class="bi bi-person-badge"></i> <strong>{{ $lead->name }}</strong>
+                                <br>
+                                <small class="text-muted">{{ $lead->email }}</small>
+                            </p>
+                        </div>
+                        @endforeach
+                    </div>
                 </div>
                 @endif
             </div>
@@ -250,10 +256,12 @@
                     {{ $siteProject->go_live_date->format('M d, Y') }}
                 </p>
                 @endif
-                @if($siteProject->lead)
+                @if($siteProject->leads->count() > 0)
                 <p class="small mb-2">
-                    <strong>Lead:</strong><br>
-                    {{ $siteProject->lead->name }}
+                    <strong>Leads:</strong><br>
+                    @foreach($siteProject->leads as $lead)
+                        <span class="badge bg-primary me-1 mb-1">{{ $lead->name }}</span>
+                    @endforeach
                 </p>
                 @endif
                 <hr>

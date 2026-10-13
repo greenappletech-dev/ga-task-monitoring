@@ -62,6 +62,16 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/tasks/{task}/assign', [TaskController::class, 'assignStore'])->name('tasks.assign.store');
     });
 
+    // QA routes - Fail QA testing
+    Route::middleware(['role:QA,Lead,Admin'])->group(function () {
+        Route::post('/tasks/{task}/fail-qa', [TaskController::class, 'failQA'])->name('tasks.fail-qa');
+    });
+
+    // Implementation routes - Fail implementation testing
+    Route::middleware(['role:Implementation,Lead,Admin'])->group(function () {
+        Route::post('/tasks/{task}/fail-implementation', [TaskController::class, 'failImplementation'])->name('tasks.fail-implementation');
+    });
+
     // Developer/QA/Lead - update tasks
     Route::middleware(['role:Developer,QA,Lead,Admin'])->group(function () {
         Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');

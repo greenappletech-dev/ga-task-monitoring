@@ -16,6 +16,7 @@ class Task extends Model
         'target_date', 'sla_due_date', 'blocked_reason', 'blocked_at',
         'blocked_duration_hours', 'completed_date', 'percent_complete',
         'est_effort', 'actual_effort', 'return_count',
+        'parent_task_id', 'rejection_reason', 'rejected_by', 'rejected_at',
     ];
 
     protected $casts = [
@@ -25,6 +26,7 @@ class Task extends Model
         'sla_due_date' => 'date',
         'completed_date' => 'date',
         'blocked_at' => 'datetime',
+        'rejected_at' => 'datetime',
         'percent_complete' => 'integer',
         'return_count' => 'integer',
     ];
@@ -47,6 +49,21 @@ class Task extends Model
     public function qa()
     {
         return $this->belongsTo(User::class, 'qa_assigned_to');
+    }
+
+    public function rejectedBy()
+    {
+        return $this->belongsTo(User::class, 'rejected_by');
+    }
+
+    public function parentTask()
+    {
+        return $this->belongsTo(Task::class, 'parent_task_id');
+    }
+
+    public function childTasks()
+    {
+        return $this->hasMany(Task::class, 'parent_task_id')->orderBy('created_at', 'desc');
     }
 
     public function comments()

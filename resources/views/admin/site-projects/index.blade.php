@@ -54,7 +54,7 @@
                     <tr>
                         <th>Site</th>
                         <th>Project</th>
-                        <th>Project Lead</th>
+                        <th>Project Leads</th>
                         <th>Version</th>
                         <th>Status</th>
                         <th>Go-Live Date</th>
@@ -67,8 +67,10 @@
                         <td><strong>{{ $siteProject->site->name }}</strong></td>
                         <td><strong>{{ $siteProject->project->name }}</strong></td>
                         <td>
-                            @if($siteProject->lead)
-                                {{ $siteProject->lead->name }}
+                            @if($siteProject->leads->count() > 0)
+                                @foreach($siteProject->leads as $lead)
+                                    <span class="badge bg-primary me-1 mb-1">{{ $lead->name }}</span>
+                                @endforeach
                             @else
                                 <span class="text-muted">Not assigned</span>
                             @endif

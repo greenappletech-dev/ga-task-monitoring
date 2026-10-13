@@ -46,24 +46,36 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="lead_user_id" class="form-label">Project Lead</label>
-                            <select class="form-select @error('lead_user_id') is-invalid @enderror"
-                                    id="lead_user_id" name="lead_user_id">
-                                <option value="">Select a lead...</option>
-                                @foreach($leads as $lead)
-                                    <option value="{{ $lead->id }}" {{ old('lead_user_id') == $lead->id ? 'selected' : '' }}>
-                                        {{ $lead->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <small class="text-muted">The lead manages this project at this site</small>
-                            @error('lead_user_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Project Leads</label>
+                            <div class="card">
+                                <div class="card-body" style="max-height: 200px; overflow-y: auto;">
+                                    @if($leads->count() > 0)
+                                        @foreach($leads as $lead)
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                   name="lead_ids[]" value="{{ $lead->id }}"
+                                                   id="lead_{{ $lead->id }}"
+                                                   {{ in_array($lead->id, old('lead_ids', [])) ? 'checked' : '' }}>
+                                            <label class="form-check-label" for="lead_{{ $lead->id }}">
+                                                {{ $lead->name }}
+                                            </label>
+                                        </div>
+                                        @endforeach
+                                    @else
+                                        <p class="text-muted small mb-0">No users with Lead role found</p>
+                                    @endif
+                                </div>
+                            </div>
+                            <small class="text-muted">Select one or more leads to manage this project at this site</small>
+                            @error('lead_ids')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
+                    </div>
 
-                        <div class="col-md-6 mb-3">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
                             <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
                             <select class="form-select @error('status') is-invalid @enderror"
                                     id="status" name="status" required>
@@ -75,9 +87,6 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                    </div>
-
-                    <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="version" class="form-label">Version</label>
                             <input type="text" class="form-control @error('version') is-invalid @enderror"

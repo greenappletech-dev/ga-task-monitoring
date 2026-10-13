@@ -37,6 +37,12 @@ class SiteProject extends Model
         return $this->belongsTo(User::class, 'lead_user_id');
     }
 
+    public function leads()
+    {
+        return $this->belongsToMany(User::class, 'site_project_leads', 'site_project_id', 'user_id')
+            ->withTimestamps();
+    }
+
     public function tasks()
     {
         return $this->hasMany(Task::class);

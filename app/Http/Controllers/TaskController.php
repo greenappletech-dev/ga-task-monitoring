@@ -300,6 +300,116 @@ class TaskController extends Controller
     }
 
     /**
+     * Fail QA Testing - Creates a new rework task
+     */
+    public function failQA(Request $request, Task $task)
+    {
+        $user = auth()->user();
+
+        // Only QA, Lead, and Admin can fail QA testing
+        if (!$user->hasAnyRole(['QA', 'Lead', 'Admin'])) {
+            return redirect()->route('tasks.show', $task)
+                ->with('error', 'You do not have permission to fail QA testing.');
+        }
+
+        if ($task->status !== 'For QA UAT') {
+            return redirect()->route('tasks.show', $task)
+                ->with('error', 'Only tasks in QA Testing can be failed.');
+        }
+
+        $validated = $request->validate([
+            'rejection_reason' => 'required|string|max:1000',
+        ]);
+
+        // Update original task
+        $task->update([
+            'status' => 'Blocked',
+            'rejection_reason' => $validated['rejection_reason'],
+            'rejected_by' => $user->id,
+            'rejected_at' => now(),
+            'return_count' => ($task->return_count ?? 0) + 1,
+        ]);
+
+        // Create new rework task
+        $newTask = Task::create([
+            'task_no' => 'TASK-' . strtoupper(uniqid()),
+            'parent_task_id' => $task->id,
+            'site_project_id' => $task->site_project_id,
+            'type' => 'Bug Fix / Rework',
+            'title' => '[REWORK] ' . $task->title,
+            'description' => "**Original Task:** {$task->task_no}\n\n**QA Rejection Reason:**\n{$validated['rejection_reason']}\n\n---\n\n**Original Description:**\n{$task->description}",
+            'source' => 'QA Testing',
+            'priority' => $task->priority,
+            'status' => 'Assigned',
+            'requested_by' => $user->id,
+            'date_requested' => now(),
+            'assigned_to' => $task->assigned_to, // Assign back to same developer
+            'qa_assigned_to' => $task->qa_assigned_to,
+            'date_assigned' => now(),
+            'target_date' => now()->addDays(2), // 2-day turnaround for rework
+            'sla_due_date' => now()->addDays(3),
+        ]);
+
+        return redirect()->route('tasks.show', $newTask)
+            ->with('success', "QA Test Failed. New rework task {$newTask->task_no} has been created and assigned to the developer.");
+    }
+
+    /**
+     * Fail Implementation Testing - Creates a new rework task
+     */
+    public function failImplementation(Request $request, Task $task)
+    {
+        $user = auth()->user();
+
+        // Only Implementation, Lead, and Admin can fail implementation testing
+        if (!$user->hasAnyRole(['Implementation', 'Lead', 'Admin'])) {
+            return redirect()->route('tasks.show', $task)
+                ->with('error', 'You do not have permission to fail implementation testing.');
+        }
+
+        if ($task->status !== 'For Implementation UAT') {
+            return redirect()->route('tasks.show', $task)
+                ->with('error', 'Only tasks in Implementation Testing can be failed.');
+        }
+
+        $validated = $request->validate([
+            'rejection_reason' => 'required|string|max:1000',
+        ]);
+
+        // Update original task
+        $task->update([
+            'status' => 'Blocked',
+            'rejection_reason' => $validated['rejection_reason'],
+            'rejected_by' => $user->id,
+            'rejected_at' => now(),
+            'return_count' => ($task->return_count ?? 0) + 1,
+        ]);
+
+        // Create new rework task
+        $newTask = Task::create([
+            'task_no' => 'TASK-' . strtoupper(uniqid()),
+            'parent_task_id' => $task->id,
+            'site_project_id' => $task->site_project_id,
+            'type' => 'Bug Fix / Rework',
+            'title' => '[REWORK] ' . $task->title,
+            'description' => "**Original Task:** {$task->task_no}\n\n**Implementation Rejection Reason:**\n{$validated['rejection_reason']}\n\n---\n\n**Original Description:**\n{$task->description}",
+            'source' => 'Implementation Testing',
+            'priority' => 'High', // Bump priority for implementation failures
+            'status' => 'Assigned',
+            'requested_by' => $user->id,
+            'date_requested' => now(),
+            'assigned_to' => $task->assigned_to, // Assign back to same developer
+            'qa_assigned_to' => $task->qa_assigned_to,
+            'date_assigned' => now(),
+            'target_date' => now()->addDays(1), // 1-day turnaround for implementation failures
+            'sla_due_date' => now()->addDays(2),
+        ]);
+
+        return redirect()->route('tasks.show', $newTask)
+            ->with('success', "Implementation Test Failed. New rework task {$newTask->task_no} has been created and assigned to the developer.");
+    }
+
+    /**
      * Show assign form (Lead/Admin only)
      */
     public function assignForm(Task $task)
@@ -475,12 +585,61 @@ class TaskController extends Controller
             'status' => 'required|in:New,For Clarification,Approved,Assigned,In Progress,Blocked,For QA UAT,For Implementation UAT,Done,Rejected,Cancelled,On Hold',
         ]);
 
+        $user = auth()->user();
         $oldStatus = $task->status;
-        $task->update(['status' => $validated['status']]);
+        $newStatus = $validated['status'];
+
+        // Role-based status change validation
+        if (!$user->hasAnyRole(['Admin', 'Lead'])) {
+            // Developer role: Can only move between Backlog, In Progress, and QA Testing
+            if ($user->hasRole('Developer')) {
+                $allowedStatuses = ['New', 'For Clarification', 'Approved', 'Assigned', 'In Progress', 'Blocked', 'For QA UAT'];
+                if (!in_array($newStatus, $allowedStatuses)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Developers can only move tasks between Backlog, In Progress, and QA Testing columns.'
+                    ], 403);
+                }
+            }
+            // QA role: Can only move tasks to Implementation Testing
+            elseif ($user->hasRole('QA')) {
+                if ($newStatus !== 'For Implementation UAT') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'QA can only move tasks to Implementation Testing column.'
+                    ], 403);
+                }
+                // QA can only move from QA Testing column
+                if ($oldStatus !== 'For QA UAT') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'QA can only move tasks from QA Testing column.'
+                    ], 403);
+                }
+            }
+            // Implementation role: Can only move tasks to Done
+            elseif ($user->hasRole('Implementation')) {
+                if ($newStatus !== 'Done') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Implementation can only move tasks to Done column.'
+                    ], 403);
+                }
+                // Implementation can only move from Implementation Testing column
+                if ($oldStatus !== 'For Implementation UAT') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Implementation can only move tasks from Implementation Testing column.'
+                    ], 403);
+                }
+            }
+        }
+
+        $task->update(['status' => $newStatus]);
 
         return response()->json([
             'success' => true,
-            'message' => "Task {$task->task_no} moved from {$oldStatus} to {$validated['status']}",
+            'message' => "Task {$task->task_no} moved from {$oldStatus} to {$newStatus}",
             'task' => $task->load(['siteProject.site', 'siteProject.project', 'developer', 'qa'])
         ]);
     }

@@ -220,44 +220,164 @@
         </div>
 
         <!-- Actions Card -->
-        @if(auth()->user()->hasRole('Lead') || auth()->user()->hasRole('Admin'))
-        <div class="card">
+        @if(auth()->user()->hasAnyRole(['Lead', 'Admin', 'QA', 'Implementation']))
+        <div class="card mb-3">
             <div class="card-header bg-light">
                 <h6 class="mb-0"><i class="bi bi-gear"></i> Actions</h6>
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    @if($task->status === 'New')
-                    <form action="{{ route('tasks.approve', $task) }}" method="POST" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-success btn-sm w-100"
-                                onclick="return confirm('Are you sure you want to approve this task?')">
-                            <i class="bi bi-check-circle"></i> Approve Task
-                        </button>
-                    </form>
-                    <form action="{{ route('tasks.reject', $task) }}" method="POST" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-danger btn-sm w-100"
-                                onclick="return confirm('Are you sure you want to reject this task?')">
-                            <i class="bi bi-x-circle"></i> Reject Task
-                        </button>
-                    </form>
+                    {{-- Lead/Admin Actions --}}
+                    @if(auth()->user()->hasAnyRole(['Lead', 'Admin']))
+                        @if($task->status === 'New')
+                        <form action="{{ route('tasks.approve', $task) }}" method="POST" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-success btn-sm w-100"
+                                    onclick="return confirm('Are you sure you want to approve this task?')">
+                                <i class="bi bi-check-circle"></i> Approve Task
+                            </button>
+                        </form>
+                        <form action="{{ route('tasks.reject', $task) }}" method="POST" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-danger btn-sm w-100"
+                                    onclick="return confirm('Are you sure you want to reject this task?')">
+                                <i class="bi bi-x-circle"></i> Reject Task
+                            </button>
+                        </form>
+                        @endif
+
+                        @if(in_array($task->status, ['Approved', 'For Clarification', 'Assigned']))
+                        <a href="{{ route('tasks.assign', $task) }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-person-plus"></i>
+                            @if($task->status === 'Assigned')
+                                Re-assign Developer & QA
+                            @else
+                                Assign Developer & QA
+                            @endif
+                        </a>
+                        @endif
                     @endif
 
-                    @if(in_array($task->status, ['Approved', 'For Clarification', 'Assigned']))
-                    <a href="{{ route('tasks.assign', $task) }}" class="btn btn-primary btn-sm">
-                        <i class="bi bi-person-plus"></i>
-                        @if($task->status === 'Assigned')
-                            Re-assign Developer & QA
-                        @else
-                            Assign Developer & QA
-                        @endif
-                    </a>
+                    {{-- QA Actions --}}
+                    @if(auth()->user()->hasAnyRole(['QA', 'Lead', 'Admin']) && $task->status === 'For QA UAT')
+                    <button type="button" class="btn btn-danger btn-sm w-100" data-bs-toggle="modal" data-bs-target="#failQAModal">
+                        <i class="bi bi-x-octagon"></i> Fail QA Testing
+                    </button>
+                    @endif
+
+                    {{-- Implementation Actions --}}
+                    @if(auth()->user()->hasAnyRole(['Implementation', 'Lead', 'Admin']) && $task->status === 'For Implementation UAT')
+                    <button type="button" class="btn btn-danger btn-sm w-100" data-bs-toggle="modal" data-bs-target="#failImplementationModal">
+                        <i class="bi bi-x-octagon"></i> Fail Implementation Testing
+                    </button>
                     @endif
                 </div>
             </div>
         </div>
         @endif
+
+        {{-- Related Tasks Card --}}
+        @if($task->parentTask || $task->childTasks->count() > 0)
+        <div class="card">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-link-45deg"></i> Related Tasks</h6>
+            </div>
+            <div class="card-body">
+                @if($task->parentTask)
+                <div class="mb-3">
+                    <p class="small text-muted mb-1"><i class="bi bi-arrow-up-circle"></i> Parent Task</p>
+                    <a href="{{ route('tasks.show', $task->parentTask) }}" class="btn btn-sm btn-outline-primary w-100 text-start">
+                        <strong>{{ $task->parentTask->task_no }}</strong>
+                        <br>
+                        <small>{{ Str::limit($task->parentTask->title, 50) }}</small>
+                    </a>
+                </div>
+                @endif
+
+                @if($task->childTasks->count() > 0)
+                <div>
+                    <p class="small text-muted mb-1"><i class="bi bi-arrow-down-circle"></i> Rework Tasks ({{ $task->childTasks->count() }})</p>
+                    @foreach($task->childTasks as $childTask)
+                    <a href="{{ route('tasks.show', $childTask) }}" class="btn btn-sm btn-outline-secondary w-100 text-start mb-2">
+                        <strong>{{ $childTask->task_no }}</strong>
+                        <span class="badge {{ $childTask->status === 'Done' ? 'bg-success' : 'bg-warning' }} float-end">
+                            {{ $childTask->status }}
+                        </span>
+                        <br>
+                        <small>{{ Str::limit($childTask->title, 50) }}</small>
+                    </a>
+                    @endforeach
+                </div>
+                @endif
+            </div>
+        </div>
+        @endif
+    </div>
+</div>
+
+{{-- Fail QA Modal --}}
+<div class="modal fade" id="failQAModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ route('tasks.fail-qa', $task) }}" method="POST">
+                @csrf
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-x-octagon"></i> Fail QA Testing</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-danger mb-3">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>This will create a new rework task assigned to the developer.</strong>
+                    </p>
+                    <div class="mb-3">
+                        <label for="rejection_reason" class="form-label">Reason for Failure <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="rejection_reason" name="rejection_reason" rows="5" required
+                                  placeholder="Please describe the issues found during QA testing..."></textarea>
+                        <small class="text-muted">Be specific about what failed and what needs to be fixed.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-octagon"></i> Fail QA & Create Rework Task
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Fail Implementation Modal --}}
+<div class="modal fade" id="failImplementationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ route('tasks.fail-implementation', $task) }}" method="POST">
+                @csrf
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-x-octagon"></i> Fail Implementation Testing</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-danger mb-3">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>This will create a high-priority rework task assigned to the developer.</strong>
+                    </p>
+                    <div class="mb-3">
+                        <label for="implementation_rejection_reason" class="form-label">Reason for Failure <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="implementation_rejection_reason" name="rejection_reason" rows="5" required
+                                  placeholder="Please describe the issues found during implementation testing..."></textarea>
+                        <small class="text-muted">Be specific about what failed and what needs to be fixed.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-octagon"></i> Fail Implementation & Create Rework Task
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 

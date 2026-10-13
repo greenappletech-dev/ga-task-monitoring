@@ -8,9 +8,11 @@
     <a href="{{ route('tasks.index') }}" class="btn btn-sm btn-outline-secondary">
         <i class="bi bi-arrow-left"></i> Back to Tasks
     </a>
+    @if(auth()->user()->hasAnyRole(['Developer', 'QA', 'Lead', 'Admin']))
     <a href="{{ route('tasks.edit', $task) }}" class="btn btn-sm btn-primary">
         <i class="bi bi-pencil"></i> Edit Task
     </a>
+    @endif
 </div>
 
 <div class="row">

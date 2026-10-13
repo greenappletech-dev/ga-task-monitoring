@@ -45,8 +45,6 @@ Route::middleware(['auth'])->group(function () {
 
     // Task detail (must come after /tasks/create)
     Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
-    Route::get('/tasks/{task}/edit', [TaskController::class, 'edit'])->name('tasks.edit');
-    Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
 
     // Task comments
     Route::post('/tasks/{task}/comments', [TaskController::class, 'storeComment'])->name('tasks.comments.store');
@@ -75,8 +73,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/tasks/{task}/fail-implementation', [TaskController::class, 'failImplementation'])->name('tasks.fail-implementation');
     });
 
-    // Developer/QA/Lead - update tasks
+    // Developer/QA/Lead/Admin - edit and update tasks
     Route::middleware(['role:Developer,QA,Lead,Admin'])->group(function () {
+        Route::get('/tasks/{task}/edit', [TaskController::class, 'edit'])->name('tasks.edit');
         Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
     });
 

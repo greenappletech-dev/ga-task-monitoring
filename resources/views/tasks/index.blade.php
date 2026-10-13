@@ -6,9 +6,11 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0">Task Board</h4>
+    @if(auth()->user()->hasAnyRole(['Implementation', 'Admin', 'Lead']))
     <a href="{{ route('tasks.create') }}" class="btn btn-primary">
         <i class="bi bi-plus-circle"></i> New Task
     </a>
+    @endif
 </div>
 
 <!-- Filters -->
@@ -152,9 +154,11 @@
                                 <a href="{{ route('tasks.show', $task) }}" class="btn btn-outline-primary" title="View">
                                     <i class="bi bi-eye"></i>
                                 </a>
+                                @if(auth()->user()->hasAnyRole(['Developer', 'QA', 'Lead', 'Admin']))
                                 <a href="{{ route('tasks.edit', $task) }}" class="btn btn-outline-secondary" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -163,9 +167,11 @@
                         <td colspan="9" class="text-center text-muted py-5">
                             <i class="bi bi-inbox" style="font-size: 3rem;"></i>
                             <p class="mt-2 mb-0">No tasks found.</p>
+                            @if(auth()->user()->hasAnyRole(['Implementation', 'Admin', 'Lead']))
                             <p class="small">
                                 <a href="{{ route('tasks.create') }}">Create your first task</a>
                             </p>
+                            @endif
                         </td>
                     </tr>
                     @endforelse

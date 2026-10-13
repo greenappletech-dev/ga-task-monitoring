@@ -8,6 +8,9 @@ use App\Models\User;
 use App\Models\Site;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\WelcomeUserMail;
+use App\Mail\PasswordResetMail;
 
 class UserController extends Controller
 {
@@ -70,9 +73,15 @@ class UserController extends Controller
             $user->sites()->attach($validated['site_ids']);
         }
 
-        // TODO: Send welcome email with password (for now, show it in flash message)
-        return redirect()->route('admin.users.index')
-            ->with('success', "User created successfully. Temporary password: {$password} (Email them this password)");
+        // Send welcome email with password
+        try {
+            Mail::to($user->email)->send(new WelcomeUserMail($user, $password));
+            return redirect()->route('admin.users.index')
+                ->with('success', "User created successfully. Welcome email sent to {$user->email}");
+        } catch (\Exception $e) {
+            return redirect()->route('admin.users.index')
+                ->with('warning', "User created successfully, but email could not be sent. Temporary password: {$password} (Please configure email settings or manually send this to the user)");
+        }
     }
 
     /**
@@ -147,5 +156,29 @@ class UserController extends Controller
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User deleted successfully.');
+    }
+
+    /**
+     * Reset and resend password to user
+     */
+    public function resetPassword(User $user)
+    {
+        // Generate a new random password
+        $password = Str::random(12);
+
+        // Update user's password
+        $user->update([
+            'password' => Hash::make($password),
+        ]);
+
+        // Send password reset email
+        try {
+            Mail::to($user->email)->send(new PasswordResetMail($user, $password));
+            return redirect()->back()
+                ->with('success', "Password reset successfully. Email sent to {$user->email}");
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('warning', "Password reset successfully, but email could not be sent. New password: {$password} (Please configure email settings or manually send this to the user)");
+        }
     }
 }

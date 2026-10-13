@@ -72,6 +72,10 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('sites', SiteController::class);
         Route::resource('projects', ProjectController::class);
         Route::resource('site-projects', SiteProjectController::class);
+
+        // User password reset route (must be before resource)
+        Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
+
         Route::resource('users', UserController::class);
     });
 });

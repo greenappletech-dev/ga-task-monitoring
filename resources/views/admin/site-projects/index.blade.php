@@ -3,6 +3,41 @@
 @section('title', 'Site Projects')
 @section('page-title', 'Site Projects Management')
 
+@push('styles')
+<style>
+    @media (max-width: 768px) {
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table {
+            font-size: 0.85rem;
+            min-width: 800px;
+        }
+
+        .table th,
+        .table td {
+            padding: 0.5rem 0.25rem;
+            white-space: nowrap;
+        }
+
+        .btn-group {
+            flex-direction: row;
+        }
+
+        .btn-group .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        h4 {
+            font-size: 1.1rem;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0">All Site Projects</h4>

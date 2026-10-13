@@ -72,6 +72,13 @@
                                 <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-outline-secondary" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                <form action="{{ route('admin.users.reset-password', $user) }}" method="POST" class="d-inline"
+                                      onsubmit="return confirm('Are you sure you want to reset this user\'s password? A new password will be generated and emailed to them.');">
+                                    @csrf
+                                    <button type="submit" class="btn btn-outline-warning" title="Reset Password">
+                                        <i class="bi bi-key"></i>
+                                    </button>
+                                </form>
                                 @if($user->id !== auth()->id())
                                 <form action="{{ route('admin.users.destroy', $user) }}" method="POST" class="d-inline"
                                       onsubmit="return confirm('Are you sure you want to delete this user?');">

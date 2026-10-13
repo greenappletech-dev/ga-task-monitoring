@@ -3,6 +3,37 @@
 @section('title', 'Edit Site Project')
 @section('page-title', 'Edit: ' . $siteProject->site->name . ' - ' . $siteProject->project->name)
 
+@push('styles')
+<style>
+    @media (max-width: 768px) {
+        .col-md-8,
+        .col-md-4,
+        .col-md-6 {
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        .card-body {
+            padding: 1rem;
+        }
+
+        .btn {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .d-flex.gap-2 {
+            flex-direction: column;
+            gap: 0.5rem !important;
+        }
+
+        .row .col-md-6 {
+            margin-bottom: 1rem;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="row">
     <div class="col-md-8">
@@ -93,7 +124,7 @@
                         <div class="col-md-6 mb-3">
                             <label for="go_live_date" class="form-label">Go-Live Date</label>
                             <input type="date" class="form-control @error('go_live_date') is-invalid @enderror"
-                                   id="go_live_date" name="go_live_date" value="{{ old('go_live_date', $siteProject->go_live_date?->format('Y-m-d')) }}">
+                                   id="go_live_date" name="go_live_date" value="{{ old('go_live_date', $siteProject->go_live_date ? $siteProject->go_live_date->format('Y-m-d') : '') }}">
                             <small class="text-muted">When this project went live</small>
                             @error('go_live_date')
                                 <div class="invalid-feedback">{{ $message }}</div>

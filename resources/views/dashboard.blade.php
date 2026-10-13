@@ -66,6 +66,32 @@
         background: linear-gradient(135deg, #8BC53F 0%, #2D8B50 100%);
         border-color: #8BC53F;
     }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .stat-card {
+            margin-bottom: 1rem;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table {
+            font-size: 0.875rem;
+        }
+
+        .table th,
+        .table td {
+            padding: 0.5rem;
+            white-space: nowrap;
+        }
+
+        h5 {
+            font-size: 1.1rem;
+        }
+    }
 </style>
 @endpush
 

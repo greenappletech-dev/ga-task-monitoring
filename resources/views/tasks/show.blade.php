@@ -315,5 +315,77 @@
     .comments-list::-webkit-scrollbar-thumb:hover {
         background: #555;
     }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .row {
+            margin-left: 0;
+            margin-right: 0;
+        }
+
+        .col-md-8,
+        .col-md-4 {
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        .card {
+            margin-bottom: 1rem;
+        }
+
+        .card-body {
+            padding: 1rem;
+        }
+
+        h5,
+        h6 {
+            font-size: 1rem;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+        }
+
+        .btn {
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
+        }
+
+        .btn-sm {
+            font-size: 0.75rem;
+            padding: 0.375rem 0.75rem;
+        }
+
+        .avatar-circle {
+            width: 32px;
+            height: 32px;
+            font-size: 0.75rem;
+        }
+
+        .comment-item {
+            padding: 0.5rem;
+        }
+
+        .d-grid.gap-2 {
+            gap: 0.5rem !important;
+        }
+
+        .mb-4,
+        .mb-3 {
+            margin-bottom: 1rem !important;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .d-flex.justify-content-between {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 0.5rem;
+        }
+
+        .d-flex.justify-content-between > * {
+            width: 100%;
+        }
+    }
 </style>
 @endsection

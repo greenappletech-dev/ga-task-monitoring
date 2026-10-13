@@ -3,6 +3,54 @@
 @section('title', 'Edit Task: ' . $task->task_no)
 @section('page-title', 'Edit Task: ' . $task->task_no)
 
+@push('styles')
+<style>
+    @media (max-width: 768px) {
+        .col-md-8,
+        .col-md-4 {
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        .card-body {
+            padding: 1rem;
+        }
+
+        .form-label {
+            font-size: 0.9rem;
+        }
+
+        .form-select,
+        .form-control {
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .d-flex.gap-2 {
+            flex-direction: column;
+            gap: 0.5rem !important;
+        }
+
+        .row .col-md-4,
+        .row .col-md-6 {
+            margin-bottom: 1rem;
+        }
+
+        h6 {
+            font-size: 1rem;
+        }
+
+        .mb-4 {
+            margin-bottom: 1rem !important;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="mb-4">
     <a href="{{ route('tasks.show', $task) }}" class="btn btn-sm btn-outline-secondary">

@@ -49,6 +49,18 @@
             top: 0;
             left: 0;
             padding-top: 1rem;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
         }
 
         .sidebar .brand {
@@ -112,6 +124,14 @@
         .main-content {
             margin-left: 250px;
             padding: 2rem;
+            transition: margin-left 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 1rem;
+            }
         }
 
         .top-bar {
@@ -173,14 +193,104 @@
             font-size: 0.875rem;
             box-shadow: 0 2px 8px rgba(139, 197, 63, 0.3);
         }
+
+        /* Mobile Menu Toggle */
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1100;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            width: 40px;
+            height: 40px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(139, 197, 63, 0.3);
+            transition: all 0.3s;
+        }
+
+        .mobile-menu-toggle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(139, 197, 63, 0.4);
+        }
+
+        .mobile-menu-toggle i {
+            font-size: 1.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: flex;
+            }
+
+            .top-bar {
+                padding: 1rem;
+            }
+
+            .page-title {
+                font-size: 1.25rem;
+                margin-left: 3rem;
+            }
+
+            .user-menu span.text-secondary {
+                display: none;
+            }
+        }
+
+        /* Mobile Overlay */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar-overlay.active {
+                display: block;
+            }
+        }
+
+        /* Responsive Tables */
+        @media (max-width: 768px) {
+            .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .card {
+                margin-bottom: 1rem;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+        }
     </style>
 
     @stack('styles')
 </head>
 <body>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle menu">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <div class="d-flex">
         <!-- Sidebar -->
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
             <a href="{{ route('dashboard') }}" class="brand">
                 <i class="bi bi-kanban"></i> Project Tracker
             </a>
@@ -316,6 +426,54 @@
 
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Mobile Menu Toggle Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+            function toggleMenu() {
+                sidebar.classList.toggle('active');
+                sidebarOverlay.classList.toggle('active');
+
+                // Change icon
+                const icon = mobileMenuToggle.querySelector('i');
+                if (sidebar.classList.contains('active')) {
+                    icon.className = 'bi bi-x-lg';
+                } else {
+                    icon.className = 'bi bi-list';
+                }
+            }
+
+            // Toggle on button click
+            mobileMenuToggle.addEventListener('click', toggleMenu);
+
+            // Close on overlay click
+            sidebarOverlay.addEventListener('click', toggleMenu);
+
+            // Close menu when clicking a nav link on mobile
+            const navLinks = sidebar.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 768) {
+                        toggleMenu();
+                    }
+                });
+            });
+
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768) {
+                    sidebar.classList.remove('active');
+                    sidebarOverlay.classList.remove('active');
+                    const icon = mobileMenuToggle.querySelector('i');
+                    icon.className = 'bi bi-list';
+                }
+            });
+        });
+    </script>
 
     @stack('scripts')
 </body>

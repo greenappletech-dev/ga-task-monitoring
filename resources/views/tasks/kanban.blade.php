@@ -304,6 +304,57 @@
     .kanban-card[data-status*="Medium"] {
         border-left-color: #0dcaf0;
     }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .kanban-board {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 1rem;
+        }
+
+        .kanban-column {
+            flex: 0 0 280px;
+            min-width: 280px;
+        }
+
+        .kanban-column-body {
+            max-height: calc(100vh - 350px);
+        }
+
+        .kanban-card {
+            font-size: 0.9rem;
+        }
+
+        .kanban-card-body p {
+            font-size: 0.85rem;
+        }
+
+        /* Make filters stack on mobile */
+        .row.g-3.align-items-end > div {
+            margin-bottom: 0.5rem;
+        }
+
+        .btn-sm {
+            font-size: 0.8rem;
+            padding: 0.375rem 0.75rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .kanban-column {
+            flex: 0 0 260px;
+            min-width: 260px;
+        }
+
+        .d-flex.gap-2 {
+            flex-wrap: wrap;
+        }
+
+        h4 {
+            font-size: 1.1rem;
+        }
+    }
 </style>
 
 @push('scripts')

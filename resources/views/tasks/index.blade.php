@@ -185,5 +185,51 @@
     .table td {
         vertical-align: middle;
     }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        h4 {
+            font-size: 1.1rem;
+        }
+
+        .btn {
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table {
+            font-size: 0.85rem;
+            min-width: 800px;
+        }
+
+        .table th,
+        .table td {
+            padding: 0.5rem 0.25rem;
+            white-space: nowrap;
+        }
+
+        .badge {
+            font-size: 0.7rem;
+        }
+
+        .btn-group {
+            flex-direction: row;
+        }
+
+        .btn-group .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .d-flex.gap-2 {
+            flex-wrap: wrap;
+            gap: 0.5rem !important;
+        }
+    }
 </style>
 @endsection

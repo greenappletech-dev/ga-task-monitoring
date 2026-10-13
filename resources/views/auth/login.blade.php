@@ -240,7 +240,41 @@
             }
 
             .login-form-container {
-                padding: 2rem;
+                padding: 2rem 1.5rem;
+            }
+
+            .login-right {
+                padding: 1rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            body {
+                overflow-y: auto;
+                height: auto;
+            }
+
+            .login-container {
+                height: auto;
+                min-height: 100vh;
+            }
+
+            .login-form-container {
+                padding: 1.5rem 1rem;
+                box-shadow: none;
+            }
+
+            .login-form-header h2 {
+                font-size: 1.5rem;
+            }
+
+            .btn-login {
+                padding: 0.75rem;
+                font-size: 0.95rem;
+            }
+
+            .form-control {
+                font-size: 0.9rem;
             }
         }
 

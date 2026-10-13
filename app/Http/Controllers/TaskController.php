@@ -451,52 +451,67 @@ class TaskController extends Controller
      */
     public function assignForm(Task $task)
     {
-        // Eager load relationships to prevent errors
-        $task->load('siteProject.site', 'siteProject.project');
+        try {
+            // Eager load relationships to prevent errors
+            $task->load('siteProject.site', 'siteProject.project');
 
-        if (!in_array($task->status, ['Approved', 'For Clarification', 'Assigned'])) {
+            if (!in_array($task->status, ['Approved', 'For Clarification', 'Assigned'])) {
+                return redirect()->route('tasks.show', $task)
+                    ->with('error', 'This task cannot be assigned in its current status.');
+            }
+
+            $user = auth()->user();
+
+            // Check if siteProject relationship exists
+            if (!$task->siteProject) {
+                return redirect()->route('tasks.show', $task)
+                    ->with('error', 'This task has invalid site/project assignment. Please contact an administrator.');
+            }
+
+            // Get developers and QA from the same site as the task
+            $siteId = $task->siteProject->site_id;
+
+            if ($user->hasRole('Admin')) {
+                // Admin sees all developers and QA
+                $developers = User::whereJsonContains('roles', 'Developer')
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get();
+                $qaUsers = User::whereJsonContains('roles', 'QA')
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get();
+            } else {
+                // Non-admin sees only developers and QA from their sites
+                $developers = User::whereJsonContains('roles', 'Developer')
+                    ->where('is_active', true)
+                    ->whereHas('sites', function($q) use ($siteId) {
+                        $q->where('sites.id', $siteId);
+                    })
+                    ->orderBy('name')
+                    ->get();
+                $qaUsers = User::whereJsonContains('roles', 'QA')
+                    ->where('is_active', true)
+                    ->whereHas('sites', function($q) use ($siteId) {
+                        $q->where('sites.id', $siteId);
+                    })
+                    ->orderBy('name')
+                    ->get();
+            }
+
+            return view('tasks.assign', compact('task', 'developers', 'qaUsers'));
+
+        } catch (\Exception $e) {
+            // Log the error for debugging
+            \Log::error('Error in assignForm: ' . $e->getMessage(), [
+                'task_id' => $task->id,
+                'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return redirect()->route('tasks.show', $task)
-                ->with('error', 'This task cannot be assigned in its current status.');
+                ->with('error', 'An error occurred while loading the assignment form. Please try again or contact support.');
         }
-
-        $user = auth()->user();
-
-        // Check if siteProject relationship exists
-        if (!$task->siteProject) {
-            return redirect()->route('tasks.show', $task)
-                ->with('error', 'This task has invalid site/project assignment. Please contact an administrator.');
-        }
-
-        // Get developers and QA from the same site as the task
-        $siteId = $task->siteProject->site_id;
-
-        if ($user->hasRole('Admin')) {
-            $developers = User::whereJsonContains('roles', 'Developer')
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get();
-            $qaUsers = User::whereJsonContains('roles', 'QA')
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get();
-        } else {
-            $developers = User::whereJsonContains('roles', 'Developer')
-                ->where('is_active', true)
-                ->whereHas('sites', function($q) use ($siteId) {
-                    $q->where('sites.id', $siteId);
-                })
-                ->orderBy('name')
-                ->get();
-            $qaUsers = User::whereJsonContains('roles', 'QA')
-                ->where('is_active', true)
-                ->whereHas('sites', function($q) use ($siteId) {
-                    $q->where('sites.id', $siteId);
-                })
-                ->orderBy('name')
-                ->get();
-        }
-
-        return view('tasks.assign', compact('task', 'developers', 'qaUsers'));
     }
 
     /**

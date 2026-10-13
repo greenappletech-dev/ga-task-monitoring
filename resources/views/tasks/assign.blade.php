@@ -84,13 +84,13 @@
                         <label for="target_date" class="form-label">Target Completion Date <span class="text-danger">*</span></label>
                         <input type="date" class="form-control @error('target_date') is-invalid @enderror"
                                id="target_date" name="target_date"
-                               value="{{ old('target_date', $task->target_date?->format('Y-m-d') ?? now()->addDays(5)->format('Y-m-d')) }}"
+                               value="{{ old('target_date', optional($task->target_date)->format('Y-m-d') ?? now()->addDays(5)->format('Y-m-d')) }}"
                                min="{{ now()->format('Y-m-d') }}" required>
                         @error('target_date')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                         <small class="text-muted">
-                            SLA Due Date: <strong>{{ $task->sla_due_date?->format('M d, Y') ?? 'Not set' }}</strong>
+                            SLA Due Date: <strong>{{ optional($task->sla_due_date)->format('M d, Y') ?? 'Not set' }}</strong>
                         </small>
                     </div>
 

@@ -323,63 +323,85 @@ class TaskController extends Controller
      */
     public function failQA(Request $request, Task $task)
     {
-        $user = auth()->user();
+        try {
+            $user = auth()->user();
 
-        // Only QA, Lead, and Admin can fail QA testing
-        if (!$user->hasAnyRole(['QA', 'Lead', 'Admin'])) {
+            // Only QA, Lead, and Admin can fail QA testing
+            if (!$user->hasAnyRole(['QA', 'Lead', 'Admin'])) {
+                return redirect()->route('tasks.show', $task)
+                    ->with('error', 'You do not have permission to fail QA testing.');
+            }
+
+            if ($task->status !== 'For QA UAT') {
+                return redirect()->route('tasks.show', $task)
+                    ->with('error', 'Only tasks in QA Testing can be failed.');
+            }
+
+            // Check if task has developer assigned
+            if (!$task->assigned_to) {
+                return redirect()->route('tasks.show', $task)
+                    ->with('error', 'Cannot fail QA testing: Task has no developer assigned. Please assign a developer first.');
+            }
+
+            $validated = $request->validate([
+                'rejection_reason' => 'required|string|max:1000',
+            ]);
+
+            // Start database transaction
+            DB::beginTransaction();
+
+            // Log status change
+            $this->logTaskHistory($task, 'status', $task->status, 'Blocked', 'QA Testing Failed: ' . $validated['rejection_reason']);
+
+            // Update original task
+            $task->update([
+                'status' => 'Blocked',
+                'rejection_reason' => $validated['rejection_reason'],
+                'rejected_by' => $user->id,
+                'rejected_at' => now(),
+                'return_count' => ($task->return_count ?? 0) + 1,
+            ]);
+
+            // Create new rework task
+            $newTask = Task::create([
+                'task_no' => 'TASK-' . strtoupper(uniqid()),
+                'parent_task_id' => $task->id,
+                'site_project_id' => $task->site_project_id,
+                'type' => 'Bug',
+                'title' => '[REWORK] ' . $task->title,
+                'description' => "**Original Task:** {$task->task_no}\n\n**QA Rejection Reason:**\n{$validated['rejection_reason']}\n\n---\n\n**Original Description:**\n{$task->description}",
+                'source' => 'QA Testing',
+                'priority' => $task->priority,
+                'status' => 'Assigned',
+                'requested_by' => $user->id,
+                'date_requested' => now(),
+                'assigned_to' => $task->assigned_to, // Assign back to same developer
+                'qa_assigned_to' => $task->qa_assigned_to,
+                'date_assigned' => now(),
+                'target_date' => now()->addDays(2), // 2-day turnaround for rework
+                'sla_due_date' => now()->addDays(3),
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('tasks.show', $newTask)
+                ->with('success', "QA Test Failed. New rework task {$newTask->task_no} has been created and assigned to the developer.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            // Log detailed error
+            \Log::error('Error in failQA: ' . $e->getMessage(), [
+                'task_id' => $task->id,
+                'user_id' => auth()->id(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return redirect()->route('tasks.show', $task)
-                ->with('error', 'You do not have permission to fail QA testing.');
+                ->with('error', 'An error occurred while failing QA testing. Please check if the database migrations have been run, or contact support. Error: ' . $e->getMessage());
         }
-
-        if ($task->status !== 'For QA UAT') {
-            return redirect()->route('tasks.show', $task)
-                ->with('error', 'Only tasks in QA Testing can be failed.');
-        }
-
-        // Check if task has developer assigned
-        if (!$task->assigned_to) {
-            return redirect()->route('tasks.show', $task)
-                ->with('error', 'Cannot fail QA testing: Task has no developer assigned. Please assign a developer first.');
-        }
-
-        $validated = $request->validate([
-            'rejection_reason' => 'required|string|max:1000',
-        ]);
-
-        // Log status change
-        $this->logTaskHistory($task, 'status', $task->status, 'Blocked', 'QA Testing Failed: ' . $validated['rejection_reason']);
-
-        // Update original task
-        $task->update([
-            'status' => 'Blocked',
-            'rejection_reason' => $validated['rejection_reason'],
-            'rejected_by' => $user->id,
-            'rejected_at' => now(),
-            'return_count' => ($task->return_count ?? 0) + 1,
-        ]);
-
-        // Create new rework task
-        $newTask = Task::create([
-            'task_no' => 'TASK-' . strtoupper(uniqid()),
-            'parent_task_id' => $task->id,
-            'site_project_id' => $task->site_project_id,
-            'type' => 'Bug',
-            'title' => '[REWORK] ' . $task->title,
-            'description' => "**Original Task:** {$task->task_no}\n\n**QA Rejection Reason:**\n{$validated['rejection_reason']}\n\n---\n\n**Original Description:**\n{$task->description}",
-            'source' => 'QA Testing',
-            'priority' => $task->priority,
-            'status' => 'Assigned',
-            'requested_by' => $user->id,
-            'date_requested' => now(),
-            'assigned_to' => $task->assigned_to, // Assign back to same developer
-            'qa_assigned_to' => $task->qa_assigned_to,
-            'date_assigned' => now(),
-            'target_date' => now()->addDays(2), // 2-day turnaround for rework
-            'sla_due_date' => now()->addDays(3),
-        ]);
-
-        return redirect()->route('tasks.show', $newTask)
-            ->with('success', "QA Test Failed. New rework task {$newTask->task_no} has been created and assigned to the developer.");
     }
 
     /**
@@ -387,63 +409,85 @@ class TaskController extends Controller
      */
     public function failImplementation(Request $request, Task $task)
     {
-        $user = auth()->user();
+        try {
+            $user = auth()->user();
 
-        // Only Implementation, Lead, and Admin can fail implementation testing
-        if (!$user->hasAnyRole(['Implementation', 'Lead', 'Admin'])) {
+            // Only Implementation, Lead, and Admin can fail implementation testing
+            if (!$user->hasAnyRole(['Implementation', 'Lead', 'Admin'])) {
+                return redirect()->route('tasks.show', $task)
+                    ->with('error', 'You do not have permission to fail implementation testing.');
+            }
+
+            if ($task->status !== 'For Implementation UAT') {
+                return redirect()->route('tasks.show', $task)
+                    ->with('error', 'Only tasks in Implementation Testing can be failed.');
+            }
+
+            // Check if task has developer assigned
+            if (!$task->assigned_to) {
+                return redirect()->route('tasks.show', $task)
+                    ->with('error', 'Cannot fail Implementation testing: Task has no developer assigned. Please assign a developer first.');
+            }
+
+            $validated = $request->validate([
+                'rejection_reason' => 'required|string|max:1000',
+            ]);
+
+            // Start database transaction
+            DB::beginTransaction();
+
+            // Log status change
+            $this->logTaskHistory($task, 'status', $task->status, 'Blocked', 'Implementation Testing Failed: ' . $validated['rejection_reason']);
+
+            // Update original task
+            $task->update([
+                'status' => 'Blocked',
+                'rejection_reason' => $validated['rejection_reason'],
+                'rejected_by' => $user->id,
+                'rejected_at' => now(),
+                'return_count' => ($task->return_count ?? 0) + 1,
+            ]);
+
+            // Create new rework task
+            $newTask = Task::create([
+                'task_no' => 'TASK-' . strtoupper(uniqid()),
+                'parent_task_id' => $task->id,
+                'site_project_id' => $task->site_project_id,
+                'type' => 'Bug',
+                'title' => '[REWORK] ' . $task->title,
+                'description' => "**Original Task:** {$task->task_no}\n\n**Implementation Rejection Reason:**\n{$validated['rejection_reason']}\n\n---\n\n**Original Description:**\n{$task->description}",
+                'source' => 'Implementation Testing',
+                'priority' => 'High', // Bump priority for implementation failures
+                'status' => 'Assigned',
+                'requested_by' => $user->id,
+                'date_requested' => now(),
+                'assigned_to' => $task->assigned_to, // Assign back to same developer
+                'qa_assigned_to' => $task->qa_assigned_to,
+                'date_assigned' => now(),
+                'target_date' => now()->addDays(1), // 1-day turnaround for implementation failures
+                'sla_due_date' => now()->addDays(2),
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('tasks.show', $newTask)
+                ->with('success', "Implementation Test Failed. New rework task {$newTask->task_no} has been created and assigned to the developer.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            // Log detailed error
+            \Log::error('Error in failImplementation: ' . $e->getMessage(), [
+                'task_id' => $task->id,
+                'user_id' => auth()->id(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return redirect()->route('tasks.show', $task)
-                ->with('error', 'You do not have permission to fail implementation testing.');
+                ->with('error', 'An error occurred while failing implementation testing. Please check if the database migrations have been run, or contact support. Error: ' . $e->getMessage());
         }
-
-        if ($task->status !== 'For Implementation UAT') {
-            return redirect()->route('tasks.show', $task)
-                ->with('error', 'Only tasks in Implementation Testing can be failed.');
-        }
-
-        // Check if task has developer assigned
-        if (!$task->assigned_to) {
-            return redirect()->route('tasks.show', $task)
-                ->with('error', 'Cannot fail Implementation testing: Task has no developer assigned. Please assign a developer first.');
-        }
-
-        $validated = $request->validate([
-            'rejection_reason' => 'required|string|max:1000',
-        ]);
-
-        // Log status change
-        $this->logTaskHistory($task, 'status', $task->status, 'Blocked', 'Implementation Testing Failed: ' . $validated['rejection_reason']);
-
-        // Update original task
-        $task->update([
-            'status' => 'Blocked',
-            'rejection_reason' => $validated['rejection_reason'],
-            'rejected_by' => $user->id,
-            'rejected_at' => now(),
-            'return_count' => ($task->return_count ?? 0) + 1,
-        ]);
-
-        // Create new rework task
-        $newTask = Task::create([
-            'task_no' => 'TASK-' . strtoupper(uniqid()),
-            'parent_task_id' => $task->id,
-            'site_project_id' => $task->site_project_id,
-            'type' => 'Bug',
-            'title' => '[REWORK] ' . $task->title,
-            'description' => "**Original Task:** {$task->task_no}\n\n**Implementation Rejection Reason:**\n{$validated['rejection_reason']}\n\n---\n\n**Original Description:**\n{$task->description}",
-            'source' => 'Implementation Testing',
-            'priority' => 'High', // Bump priority for implementation failures
-            'status' => 'Assigned',
-            'requested_by' => $user->id,
-            'date_requested' => now(),
-            'assigned_to' => $task->assigned_to, // Assign back to same developer
-            'qa_assigned_to' => $task->qa_assigned_to,
-            'date_assigned' => now(),
-            'target_date' => now()->addDays(1), // 1-day turnaround for implementation failures
-            'sla_due_date' => now()->addDays(2),
-        ]);
-
-        return redirect()->route('tasks.show', $newTask)
-            ->with('success', "Implementation Test Failed. New rework task {$newTask->task_no} has been created and assigned to the developer.");
     }
 
     /**

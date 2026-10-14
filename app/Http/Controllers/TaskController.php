@@ -698,6 +698,14 @@ class TaskController extends Controller
         if (!$user->hasAnyRole(['Admin', 'Lead'])) {
             // Developer role: Can only move between Backlog, In Progress, and QA Testing
             if ($user->hasRole('Developer')) {
+                // Developers can only move tasks assigned to them
+                if ($task->assigned_to !== $user->id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You can only move tasks that are assigned to you.'
+                    ], 403);
+                }
+
                 $allowedStatuses = ['New', 'For Clarification', 'Approved', 'Assigned', 'In Progress', 'Blocked', 'For QA UAT'];
                 if (!in_array($newStatus, $allowedStatuses)) {
                     return response()->json([
@@ -708,6 +716,14 @@ class TaskController extends Controller
             }
             // QA role: Can only move tasks to Implementation Testing
             elseif ($user->hasRole('QA')) {
+                // QA can only move tasks assigned to them
+                if ($task->qa_assigned_to !== $user->id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You can only move tasks that are assigned to you for QA.'
+                    ], 403);
+                }
+
                 if ($newStatus !== 'For Implementation UAT') {
                     return response()->json([
                         'success' => false,
